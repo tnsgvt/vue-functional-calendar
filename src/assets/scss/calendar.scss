@@ -412,11 +412,13 @@ input.vfc-single-input {
                     margin: 0 auto;
 
                     &.vfc-today {
+                      /*
                       background-color: #ff8498;
 
                       &:after {
                         color: $white;
                       }
+                      */
                     }
 
                     &.vfc-cursor-not-allowed {
