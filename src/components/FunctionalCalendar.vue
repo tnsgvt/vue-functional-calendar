@@ -67,11 +67,13 @@
                 <div class="vfc-calendars-container">
                     <div class="vfc-navigation-buttons" ref="navigationButtons"
                          v-if="checkHiddenElement('navigationArrows')">
-                        <div @click="PreMonth" :class="{'vfc-cursor-pointer': allowPreDate}">
-                            <div class="vfc-arrow-left" :class="{'vfc-disabled': !allowPreDate}"></div>
+                        <div @click="PreMonth" class="pre-month" :class="{'vfc-cursor-pointer': allowPreDate}">
+                            <!--<div class="vfc-arrow-left" :class="{'vfc-disabled': !allowPreDate}"></div>-->
+                            {{getNextMonthName(-1)}}
                         </div>
-                        <div @click="NextMonth" :class="{'vfc-cursor-pointer': allowNextDate}">
-                            <div class="vfc-arrow-right" :class="{'vfc-disabled': !allowNextDate}"></div>
+                        <div @click="NextMonth" class="next-month" :class="{'vfc-cursor-pointer': allowNextDate}">
+                            <!--<div class="vfc-arrow-right" :class="{'vfc-disabled': !allowNextDate}"></div>-->
+                            {{getNextMonthName(1)}}
                         </div>
                     </div>
                     <div class="vfc-calendars" :key="calendarsKey" ref="calendars">
@@ -96,9 +98,9 @@
                                          :key="week_key+0">
                                         <div class="vfc-day" ref="day" v-for="(day, day_key) in week.days"
                                              :key="day_key">
-                                            <div v-if="(day.isDateRangeStart || day.isMouseToLeft) && !day.hideLeftAndRightDays"
+                                            <div v-if="((day.isDateRangeStart && !isSun(day)) || needBaseStartDiv(day) || day.isMouseToLeft) && !day.hideLeftAndRightDays"
                                                  class="vfc-base-start"></div>
-                                            <div v-else-if="(day.isDateRangeEnd || day.isMouseToRight) && !day.hideLeftAndRightDays"
+                                            <div v-else-if="((day.isDateRangeEnd && !isMon(day)) || needBaseEndDiv(day) || day.isMouseToRight) && !day.hideLeftAndRightDays"
                                                  class="vfc-base-end"></div>
                                             <span v-if="!day.hideLeftAndRightDays"
                                                   :data-date="day.day" :key="day_key"
@@ -568,6 +570,12 @@
                     }
                 }
             },
+
+            getNextMonthName(step) {
+                var d = new Date(this.calendar.currentDate.getFullYear(), this.calendar.currentDate.getMonth() + step);
+                return this.fConfigs.monthNames[d.getMonth()];
+            },
+
             /**
              * @return {boolean}
              */
@@ -687,11 +695,30 @@
                     // Mark Date
                     if (day.isMarked) {
                         classes.push('vfc-marked');
+
+                        // ADD by tnsgvt
+                        if (this.calendar.dateRange.start.date && this.calendar.dateRange.end.date) {
+                            let dStart = helpCalendar.getDateFromFormat(this.calendar.dateRange.start.date);
+                            let dEnd = helpCalendar.getDateFromFormat(this.calendar.dateRange.end.date);
+                            let dCurr = helpCalendar.getDateFromFormat(day.date);
+
+                            if (dCurr.getTime() > dStart.getTime() && dCurr.getTime() < dEnd.getTime()) {
+                                if (dCurr.getDay() == 1)
+                                    classes.push('vfc-start-marked');
+                                if (dCurr.getDay() == 0)
+                                    classes.push('vfc-end-marked');
+                            }
+                        }
+
                     }
 
                     if (this.fConfigs.markedDates.includes(day.date)) {
                         classes.push('vfc-borderd');
                     }
+
+                    // day.date: '6/5/2019'
+                    // helpCalendar.getDateFromFormat(day.date): Mon May 06 2019 00:00:00 GMT+0700 (+07)
+                    // helpCalendar.getDateFromFormat(day.date).getDay(): 1
 
                     // Date Range Marked
                     if (this.fConfigs.markedDateRange.start && this.fConfigs.markedDateRange.end) {
@@ -705,19 +732,31 @@
                         } else if (day.date === this.fConfigs.markedDateRange.end) {
                             classes.push('vfc-end-marked');
                         }
-                    } else {
 
+                        // ADD by tnsgvt
+                        if (helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.start) < helpCalendar.getDateFromFormat(day.date)
+                            && helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.end) > helpCalendar.getDateFromFormat(day.date)) {
+
+                            if (helpCalendar.getDateFromFormat(day.date).getDay() == 1)
+                                classes.push('vfc-start-marked');
+                            if (helpCalendar.getDateFromFormat(day.date).getDay() == 0)
+                                classes.push('vfc-end-marked');
+                        }
+                    } else {
                         // Only After Start Marked
                         if (this.fConfigs.markedDateRange.start) {
                             if (helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.start) <= helpCalendar.getDateFromFormat(day.date))
                                 classes.push('vfc-marked');
+                            classes.push('debug1');
                         }
 
                         // Only Before End Marked
                         if (this.fConfigs.markedDateRange.end) {
                             if (helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.end) >= helpCalendar.getDateFromFormat(day.date))
                                 classes.push('vfc-marked');
+                            classes.push('debug2');
                         }
+
                     }
 
                     classes.push('vfc-hover');
@@ -749,6 +788,66 @@
 
                 return classes;
             },
+            // ADD by tnsgvt
+            needBaseStartDiv(day) {
+                let dCurr = helpCalendar.getDateFromFormat(day.date);
+                let rtn = false;
+
+                if (this.fConfigs.markedDateRange.start && this.fConfigs.markedDateRange.end) {
+                    let dStart = helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.start);
+                    let dEnd = helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.end);
+
+                    rtn = dCurr.getTime() > dStart.getTime() && dCurr.getTime() < dEnd.getTime() && dCurr.getDay() == 1;
+                }
+
+                if (this.calendar.dateRange.start.date && this.calendar.dateRange.end.date) {
+                    let dStart = helpCalendar.getDateFromFormat(this.calendar.dateRange.start.date);
+                    let dEnd = helpCalendar.getDateFromFormat(this.calendar.dateRange.end.date);
+
+                    if (day.date === this.calendar.dateRange.start.date) {
+                        rtn = !this.isSun(day);
+                    }
+                    else if (dCurr.getTime() > dStart.getTime() && dCurr.getTime() < dEnd.getTime()) {
+                        rtn = this.isMon(day);
+                    }
+                }
+
+                return rtn;
+
+            },
+            // ADD by tnsgvt
+            needBaseEndDiv(day) {
+                var dCurr = helpCalendar.getDateFromFormat(day.date);
+                var rtn = false;
+
+                if (this.fConfigs.markedDateRange.start && this.fConfigs.markedDateRange.end) {
+                    var dStart = helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.start);
+                    var dEnd = helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.end);
+
+                    rtn = dCurr > dStart && dCurr < dEnd && dCurr.getDay() == 0;
+                }
+
+                if (this.calendar.dateRange.start.date && this.calendar.dateRange.end.date) {
+                    let dStart = helpCalendar.getDateFromFormat(this.calendar.dateRange.start.date);
+                    let dEnd = helpCalendar.getDateFromFormat(this.calendar.dateRange.end.date);
+
+                    if (day.date === this.calendar.dateRange.end.date) {
+                        rtn = !this.isMon(day);
+                    }
+                    else if (dCurr.getTime() > dStart.getTime() && dCurr.getTime() < dEnd.getTime()) {
+                        rtn = this.isSun(day);
+                    }
+                }
+
+                return rtn;
+            },
+            isMon(day) {
+                return helpCalendar.getDateFromFormat(day.date).getDay() == 1;
+            },
+            isSun(day) {
+                return helpCalendar.getDateFromFormat(day.date).getDay() == 0;
+            },
+
             checkDateRangeStart(date) {
                 return date === this.fConfigs.markedDateRange.start;
             },
@@ -780,7 +879,7 @@
             },
             checkHiddenElement(elementName) {
                 return !this.fConfigs.hiddenElements.includes(elementName);
-            }
+            },
         }
     }
 </script>
