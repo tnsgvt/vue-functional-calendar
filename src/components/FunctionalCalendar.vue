@@ -747,14 +747,12 @@
                         if (this.fConfigs.markedDateRange.start) {
                             if (helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.start) <= helpCalendar.getDateFromFormat(day.date))
                                 classes.push('vfc-marked');
-                            classes.push('debug1');
                         }
 
                         // Only Before End Marked
                         if (this.fConfigs.markedDateRange.end) {
                             if (helpCalendar.getDateFromFormat(this.fConfigs.markedDateRange.end) >= helpCalendar.getDateFromFormat(day.date))
                                 classes.push('vfc-marked');
-                            classes.push('debug2');
                         }
 
                     }
@@ -879,7 +877,7 @@
             },
             checkHiddenElement(elementName) {
                 return !this.fConfigs.hiddenElements.includes(elementName);
-            },
+            }
         }
     }
 </script>
